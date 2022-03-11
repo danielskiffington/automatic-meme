@@ -1,0 +1,91 @@
+%reactor 1 design code at 225 atm
+%constant values?
+F=145.759; %total feed molar flowrate (Kmol/hr)
+Fn2=44.0673;%total feed flowrate for nitrogen (Kmol/hr)
+alpha=0.5; %Temkin parameter
+E=1.7056E5; %activation energy
+R=8.314; %ideal gas contant
+ko=8.85E14; %Arrhenius constant
+P=225; %operating pressure atm 
+A=0.3; % cross-sectional area of packed bed m^2
+b0=-8.2125534; %coefficients for effectiveness factor 
+b1=0.03774149;%coefficients for effectiveness factor
+b2=6.190112;%coefficients for effectiveness factor
+b3=-5.354571E-5;%coefficients for effectiveness factor
+b4=-20.86963;%coefficients for effectiveness factor
+b5=2.379142E-8;%coefficients for effectiveness factor
+b6=27.88403;%coefficients for effectiveness factor
+T0=523.15;%initial temperatures
+YH2=0.691159;%initial mole fraction of hydrogen
+YN2=0.30233;%initial mole fraction of nitrogen
+YNH3=0.00674571;%initial mole fraction of ammonia
+dL=0.01;
+L=0:dL:5;%setting range for integration
+%setting all variables to be same matrix length as length
+RNH3=zeros(size(L));%rate of ammonia formation
+aH2=zeros(size(L)); %activation coefficient of hydrogen
+aN2=zeros(size(L));%activation coefficient of nitrogen
+aNH3=zeros(size(L));%activation coefficient of ammonia 
+k= zeros(size(L)); %reaction contant (from arrhenius equation)
+ka=zeros(size(L));%equilbrium contant
+fugH2=zeros(size(L)); %frugacity coefficient for hydrogen
+fugN2=zeros(size(L));%frugacity coefficient for nitrogen
+fugNH3=zeros(size(L));%frugacity coefficient for ammonia
+yN2=zeros(size(L)); % mole fraction of nitrogen at every step change
+yH2=zeros(size(L));% mole fraction of hydrogen at every step change 
+yNH3=zeros(size(L));% mole fraction of ammonia at every step change
+Hr=zeros(size(L)); %heat of reaction
+N=zeros(size(L)); %effectiveness factor 
+T=zeros(size(L)); %temperature at every step change
+X=zeros(size(L));%conversion at every step change 
+Cp=zeros(size(L));%heat capacity at every step change 
+X(1)=0;%initial conversion set to 0
+T(1)=T0;
+n=numel(X);
+for i=1:n-1
+   N(i)= b0+b1*T(i)+b2*X(i)+b3*(T(i)^2)+b4*(X(i)^2)+b5*(T(i)^3)+b6*(X(i)^3);
+   fugN2(i)=0.93431737+(0.2028538E-3)*T(i)+(0.295896E-3)*P -(0.270727E-6)*(T(i)^2)+(0.4775207E-6)*P^2;
+   fugH2(i)=exp(exp(-3.8402*(T(i)^0.125)+0.541)*P -exp(-0.1263*(T(i)^0.5)-15.98)*P^2+ 300*exp(-0.011901*T(i)-5.941)*exp(-P/300));
+   fugNH3(i)= 0.1438996+0.002028538*T(i)-(0.4487672E-3)*P -(0.1142945E-5)*(T(i)^2)+(0.2761216E-6)*P^2;
+   Hr(i)=4.184*(-P*(0.54526+(340.609/T(i))+((459.734*10^6)/(T(i)^3)))-5.34685*T(i)-0.0002525*(T(i)^2)+0.00000169167*(T(i)^3)-9157.09);
+   Cp(i)=35.31+(0.02*T(i))+(0.00000694*T(i)^2)-(0.0056*P)+(0.000014*P*T(i));
+   yN2(i)=(YN2*(1-X(i)))/(1-(2*X(i)*YN2));
+   yH2(i)=(YH2-(3*X(i)*YN2))/(1-(2*X(i)*YN2));
+   yNH3(i)=(YNH3+(2*X(i)*YN2))/(1-(2*X(i)*YN2));
+   aH2(i)=yH2(i)*fugH2(i)*P;
+   aN2(i)=yN2(i)*fugN2(i)*P;
+   aNH3(i)=yNH3(i)*fugNH3(i)*P;
+   k(i)= ko*exp(-E/(R*T(i)));
+   ka(i)=10^((-2.691122*(log10(T(i)))-((5.519265E-5)*T(i))+((1.848863E-7)*T(i)^2)+(2001.6/T(i))+2.689));
+   RNH3(i)=(2*k(i)*((ka(i)^2 *aN2(i)*((aH2(i)^3/aNH3(i)^2)^alpha)-((aNH3(i)^2/aH2(i)^3)^(1-alpha)))));
+   dTdL=(N(i)*(-Hr(i))*A*RNH3(i))/(F*Cp(i));
+   dXdL=(N(i)*RNH3(i)*A)/(Fn2*2);
+   X(i+1)=X(i)+(dL*dXdL);
+   T(i+1)=T(i)+(dL*dTdL);
+end
+
+tiledlayout(2,2);
+nexttile
+plot(L,T)
+hold on
+title("Temperature vs Length");
+grid on
+hold off
+nexttile
+plot(L,X)
+hold on
+title("Conversion vs length");
+grid on
+hold off
+nexttile
+plot(L,RNH3)
+hold on
+title("Rate vs Length");
+grid on
+hold off
+nexttile
+plot(L,ka)
+hold on
+title("Equilibrium vs Length");
+grid on
+hold off
